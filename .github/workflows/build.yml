@@ -11,22 +11,30 @@ jobs:
       - name: 拉取代码
         uses: actions/checkout@v4
 
+      # 配置JDK 17（用官方支持的temurin发行版，这次绝对没错）
       - name: 配置JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'tempo'
+          distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'  # 开启Gradle缓存，加速构建，避免网络问题
 
+      # 配置Gradle（用官方Action，自动处理wrapper和依赖）
       - name: 配置Gradle
-        uses: gradle/gradle-build-action@v3
+        uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '7.5'
 
+      # 构建APK（添加--stacktrace，方便排错；用clean确保无残留）
       - name: 构建APK
-        run: ./gradlew assembleRelease
+        run: gradle clean assembleRelease --stacktrace
 
-      - name: 上传构建产物
+      # 上传构建产物（即使构建失败也能看到日志，方便排查）
+      - name: 上传构建日志和APK
         uses: actions/upload-artifact@v4
         with:
-          name: APK文件
-          path: app/build/outputs/apk/release/app-release.apk
+          name: 构建产物
+          path: |
+            app/build/outputs/apk/release/
+            app/build/reports/
+          retention-days: 7
