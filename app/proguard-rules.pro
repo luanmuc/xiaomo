@@ -1,4 +1,3 @@
 -keep class com.hyper.mod.** { *; }
 -keep class * implements de.robv.android.xposed.IXposedHookLoadPackage { *; }
 -dontwarn de.robv.android.xposed.**
--assume NoSideEffect class android.util.Log { *; }
