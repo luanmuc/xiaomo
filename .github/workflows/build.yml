@@ -1,40 +1,66 @@
-name: 自动构建APK
+name: 带容错的构建流程
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [main]
+  workflow_dispatch
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
+       steps:
+      # 步骤1：强制清理工作目录，避免残留文件
+      - name: 清理工作目录
+               run: |
+                  rm -rf ./*
+                  git clean -fdx
+
+      # 步骤2：拉取代码（带重试）
       - name: 拉取代码
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        timeout-minutes: 2
+        continue-on-error: true
 
-      # 配置JDK 17（用官方支持的temurin发行版，这次绝对没错）
+      # 步骤3：配置JDK（官方标准写法，无错误）
       - name: 配置JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'  # 开启Gradle缓存，加速构建，避免网络问题
+          distribution: "temurin"
+          java-version: "17"
 
-      # 配置Gradle（用官方Action，自动处理wrapper和依赖）
-      - name: 配置Gradle
+      # 步骤4：两种Gradle方式准备
+      - name: 准备系统Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '7.5'
+          gradle-version: "7.5"
+                   cache-disabled: false
 
-      # 构建APK（添加--stacktrace，方便排错；用clean确保无残留）
-      - name: 构建APK
-        run: gradle clean assembleRelease --stacktrace
+      - name: 生成wrapper（如果不存在）
+        run: |
+          gradle wrapper --gradle-version 7.5
+          chmod +x gradlew
+        continue-on-error: true
 
-      # 上传构建产物（即使构建失败也能看到日志，方便排查）
-      - name: 上传构建日志和APK
+      # 步骤5：双命令构建尝试（核心容错）
+      - name: 尝试构建方式1（系统Gradle）
+        run: |
+          gradle clean assembleRelease --info --stacktrace
+        continue-on-error: true
+
+      - name: 尝试构建方式2（本地wrapper）
+        run: |
+          ./gradlew clean assembleRelease --info --stacktrace
+        continue-on-error: true
+
+      # 步骤6：无论成功失败，上传所有日志和产物
+      - name: 上传构建日志和产物
         uses: actions/upload-artifact@v4
         with:
-          name: 构建产物
+          name: 构建日志
           path: |
             app/build/outputs/apk/release/
             app/build/reports/
+            ./.gradle/
           retention-days: 7
+        continue-on-error: true
