@@ -1,0 +1,15 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(Repositories.FAIL)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "HyperMod"
+include ':app'
